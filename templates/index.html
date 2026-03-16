@@ -1,0 +1,205 @@
+{% extends 'layout.html' %}
+{% block content %}
+<div class="max-w-2xl mx-auto py-10 relative">
+    <div id="formal-concern-form" class="neu-flat p-10 rounded-[3rem] transition-all duration-500">
+        <div class="text-center mb-10">
+            <h2 class="text-3xl font-black text-gray-800 tracking-tighter uppercase">New Concern</h2>
+            <p class="text-xs font-bold text-blue-500 tracking-widest uppercase mt-2">Initialize Flow Protocol</p>
+        </div>
+
+        <form action="/submit" method="POST" class="space-y-8">
+            <input type="hidden" name="category" value="Pending AI Analysis">
+
+            <div class="space-y-2">
+                <label class="block text-xs font-black uppercase tracking-widest text-gray-400 ml-4">Student Email</label>
+                <input type="email" name="email" 
+                    class="neu-inset w-full p-4 rounded-2xl outline-none focus:text-blue-600 transition-all border-none" 
+                    placeholder="name@university.edu" required>
+            </div>
+
+            <div class="space-y-2">
+                <label class="block text-xs font-black uppercase tracking-widest text-gray-400 ml-4">Brief Subject</label>
+                <input type="text" name="subject" 
+                    class="neu-inset w-full p-4 rounded-2xl outline-none focus:text-blue-600 transition-all border-none" 
+                    placeholder="Nature of concern..." required>
+            </div>
+
+            <div class="space-y-2">
+                <label class="block text-xs font-black uppercase tracking-widest text-gray-400 ml-4">Detailed Description</label>
+                <textarea name="description" 
+                    class="neu-inset w-full p-4 rounded-2xl outline-none h-32 focus:text-blue-600 transition-all border-none" 
+                    placeholder="Describe the issue in detail..." required></textarea>
+            </div>
+
+            <div class="flex items-center gap-4 px-4">
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" name="anonymous" class="sr-only peer">
+                    <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                    <span class="ml-3 text-xs font-black uppercase tracking-widest text-gray-500">Go Anonymous</span>
+                </label>
+            </div>
+
+            <button type="submit" 
+                class="liquid-card w-full py-5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-700 font-black text-lg tracking-widest rounded-2xl transition-all transform hover:-translate-y-1 active:scale-95 border border-blue-200/50">
+                TRANSMIT CONCERN
+            </button>
+        </form>
+    </div>
+
+    <div class="fixed bottom-8 right-8 z-50">
+        <div id="ai-chat-window" class="hidden flex-col w-80 md:w-96 h-[550px] bg-white/95 backdrop-blur-2xl rounded-[2.5rem] neu-flat overflow-hidden border border-white/50 mb-4 transition-all duration-300 shadow-2xl">
+            <div class="p-6 bg-gray-800 text-white flex justify-between items-center shadow-lg">
+                <div class="flex items-center gap-3">
+                    <div class="w-2 h-2 bg-blue-400 rounded-full animate-pulse shadow-[0_0_8px_#60a5fa]"></div>
+                    <div>
+                        <h4 class="text-[10px] font-black uppercase tracking-widest">System // Concernflow</h4>
+                        <p class="text-[8px] text-gray-400 font-bold uppercase">Flow Logic v4.0</p>
+                    </div>
+                </div>
+                <button onclick="toggleChat()" class="hover:text-red-400 transition-colors p-2 text-xs">✕</button>
+            </div>
+
+            <div id="chat-content" class="flex-1 p-6 overflow-y-auto space-y-4 scrollbar-hide flex flex-col">
+                <div class="chat-bubble-ai self-start max-w-[85%] text-[11px] font-medium text-gray-600 border-l-4 border-blue-500">
+                    <span class="font-black text-blue-600">[CONCERNFLOW_SYNCHRONIZED]:</span> Systems are active. Please describe your <strong>Academic</strong>, <strong>Financial</strong>, or <strong>Welfare</strong> concern to begin the routing process.
+                </div>
+            </div>
+
+            <div class="p-6 bg-gray-50/50 border-t border-gray-100 flex gap-3">
+                <input id="user-msg" type="text" 
+                    class="neu-inset flex-1 p-4 rounded-2xl text-[11px] font-bold text-gray-700 outline-none focus:ring-2 ring-blue-500/20 transition-all" 
+                    placeholder="Input flow data...">
+                <button onclick="sendMessage()" 
+                    class="neu-flat p-4 rounded-2xl text-blue-600 hover:text-blue-800 transition-all active:scale-90 bg-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <button onclick="toggleChat()" class="neu-flat w-16 h-16 rounded-full bg-blue-600 text-white flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-xl group">
+            <svg class="w-7 h-7 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+        </button>
+    </div>
+</div>
+
+<script>
+    function toggleChat() {
+        const window = document.getElementById('ai-chat-window');
+        window.classList.toggle('hidden');
+        window.classList.toggle('flex');
+    }
+
+    function formatAIResponse(text) {
+        let formatted = text
+            .replace(/\*\*(.*?)\*\*/g, '<strong class="highlight-bold">$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em class="highlight-italic">$1</em>')
+            .replace(/^\s*\*\s+(.*)/gm, '<div class="flex gap-2 ml-2 mb-1"><span class="text-blue-500 font-black">•</span><span>$1</span></div>')
+            .replace(/\n/g, '<br>');
+        
+        return formatted;
+    }
+
+    async function sendMessage() {
+        const input = document.getElementById('user-msg');
+        const content = document.getElementById('chat-content');
+        const message = input.value.trim();
+        
+        if (!message) return;
+
+        content.innerHTML += `
+            <div class="flex justify-end animate-in fade-in slide-in-from-right-4 duration-300">
+                <div class="bg-blue-600 text-white p-4 rounded-[1.8rem] rounded-tr-none max-w-[85%] text-[11px] font-bold shadow-lg">
+                    ${message}
+                </div>
+            </div>`;
+        
+        input.value = '';
+        content.scrollTop = content.scrollHeight;
+
+        const loadingId = 'load-' + Date.now();
+        content.innerHTML += `
+            <div id="${loadingId}" class="flex justify-start animate-pulse">
+                <div class="bg-gray-100 text-gray-400 px-4 py-2 rounded-full text-[8px] font-black uppercase tracking-tighter">
+                    Processing Concernflow...
+                </div>
+            </div>`;
+        content.scrollTop = content.scrollHeight;
+
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: message })
+            });
+
+            const data = await response.json();
+            document.getElementById(loadingId).remove();
+
+            if (data.reply) {
+                let aiReply = data.reply;
+
+                if (aiReply.includes('[TRIGGER_FORM]')) {
+                    aiReply = aiReply.replace('[TRIGGER_FORM]', '');
+                    setTimeout(() => {
+                        const form = document.getElementById('formal-concern-form');
+                        form.scrollIntoView({ behavior: 'smooth' });
+                        form.classList.add('ring-4', 'ring-blue-500', 'scale-[1.02]');
+                        setTimeout(() => form.classList.remove('ring-4', 'ring-blue-500', 'scale-[1.02]'), 3000);
+                    }, 500);
+                }
+
+                content.innerHTML += `
+                    <div class="flex justify-start animate-in fade-in slide-in-from-left-4 duration-300">
+                        <div class="chat-bubble-ai self-start max-w-[85%] text-[11px] font-medium text-gray-700">
+                            ${formatAIResponse(aiReply)}
+                        </div>
+                    </div>`;
+            }
+        } catch (e) {
+            if(document.getElementById(loadingId)) document.getElementById(loadingId).remove();
+            content.innerHTML += '<div class="text-red-500 text-[8px] font-black text-center uppercase">Flow Error: Connection Interrupted</div>';
+        }
+        
+        content.scrollTop = content.scrollHeight;
+    }
+
+    document.getElementById('user-msg').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+    });
+</script>
+
+<style>
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+    .chat-bubble-ai {
+        background-color: white;
+        border: 1px solid #f3f4f6;
+        padding: 1rem;
+        border-radius: 1.8rem;
+        border-top-left-radius: 0;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+        line-height: 1.6;
+    }
+
+    .highlight-bold {
+        color: #1e3a8a;
+        background-color: #eff6ff;
+        padding: 1px 4px;
+        border-radius: 4px;
+        font-weight: 800;
+        border: 1px solid #dbeafe;
+    }
+
+    .highlight-italic {
+        color: #374151;
+        font-style: italic;
+        text-decoration: underline decoration-blue-200 decoration-2 underline-offset-4;
+        font-weight: 600;
+    }
+
+    #formal-concern-form {
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+</style>
+{% endblock %}

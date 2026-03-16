@@ -1,0 +1,175 @@
+{% extends 'layout.html' %}
+{% block content %}
+<div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div>
+        <h1 class="text-3xl font-black text-gray-800 tracking-tighter uppercase">{{ title }}</h1>
+        <p class="text-[10px] font-bold text-blue-600 tracking-widest uppercase">System Concernflow Analysis</p>
+    </div>
+    
+    <div class="flex flex-wrap items-center gap-2">
+        <a href="/admin" class="neu-flat px-3 py-2 rounded-xl text-[9px] font-black {{ 'text-blue-600 bg-white/50' if request.path == '/admin' else 'text-gray-400' }}">MASTER</a>
+        <a href="/academic" class="neu-flat px-3 py-2 rounded-xl text-[9px] font-black {{ 'text-blue-600 bg-white/50' if request.path == '/academic' else 'text-gray-400' }}">ACADEMIC</a>
+        <a href="/financial" class="neu-flat px-3 py-2 rounded-xl text-[9px] font-black {{ 'text-blue-600 bg-white/50' if request.path == '/financial' else 'text-gray-400' }}">FINANCIAL</a>
+        <a href="/welfare" class="neu-flat px-3 py-2 rounded-xl text-[9px] font-black {{ 'text-blue-600 bg-white/50' if request.path == '/welfare' else 'text-gray-400' }}">WELFARE</a>
+        
+        <div class="h-6 w-[1px] bg-gray-200 mx-2"></div> 
+
+        <a href="/export" class="neu-flat px-4 py-2 rounded-xl text-[9px] font-black text-green-600 hover:bg-green-50 transition-all flex items-center gap-2 border border-green-100/50">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            DATA_EXTRACT.CSV
+        </a>
+
+        <a href="/export_pdf" class="neu-flat px-4 py-2 rounded-xl text-[9px] font-black text-orange-600 hover:bg-orange-50 transition-all flex items-center gap-2 border border-orange-100/50">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+            GENERATE_REPORT.PDF
+        </a>
+
+        <a href="/logout" class="neu-flat px-4 py-2 rounded-xl text-[9px] font-black text-red-500 hover:bg-red-50 hover:text-red-600 transition-all flex items-center gap-2 border border-red-100/50">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+            TERMINATE_SESSION
+        </a>
+    </div>
+</div>
+
+<div class="flex flex-col lg:flex-row gap-8">
+    <div class="flex-1 space-y-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="neu-flat p-6 rounded-[2rem] text-center">
+                <p class="text-[10px] font-black uppercase text-gray-400">Total Concernflow</p>
+                <p class="text-4xl font-black text-gray-800">{{ total }}</p>
+            </div>
+            <div class="neu-flat p-6 rounded-[2rem] text-center border-t-4 {{ 'border-red-500' if esc_rate > 10 else 'border-green-500' }}">
+                <p class="text-[10px] font-black uppercase text-gray-400">Escalation Velocity</p>
+                <p class="text-4xl font-black {{ 'text-red-500' if esc_rate > 10 else 'text-green-500' }}">{{ esc_rate|round(1) }}%</p>
+            </div>
+        </div>
+
+        <div class="liquid-card overflow-hidden min-h-[500px]">
+            <table class="w-full text-left">
+                <thead>
+                    <tr class="text-gray-400 text-[10px] uppercase font-black border-b border-white/10">
+                        <th class="p-4">Reference</th>
+                        <th class="p-4">Details</th>
+                        <th class="p-4">Identity</th>
+                        <th class="p-4">Flow Protocol</th>
+                    </tr>
+                </thead>
+                <tbody class="text-xs">
+                    {% for c in concerns %}
+                    <tr class="border-b border-white/5 hover:bg-white/5 transition-all">
+                        <td class="p-4">
+                            <p class="font-black text-gray-800">#FLOW-{{ "%04d" % c.id }}</p>
+                            <span class="text-[9px] px-2 py-0.5 rounded bg-gray-100 text-gray-500 uppercase">{{ c.status }}</span>
+                            {% if c.is_escalated %}
+                            <span class="text-[9px] px-2 py-0.5 rounded bg-red-100 text-red-600 font-bold uppercase ml-1">ESCALATED</span>
+                            {% endif %}
+                        </td>
+                        <td class="p-4">
+                            <p class="font-bold text-blue-600">{{ c.subject }}</p>
+                            <button onclick="openModal('{{ c.subject|e }}', '{{ c.description|e }}', '{{ c.id }}')" 
+                                    class="mt-1 text-[9px] font-black text-gray-400 hover:text-blue-500 uppercase flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                Analyze Narrative
+                            </button>
+                        </td>
+                        <td class="p-4">
+                            {% if c.is_anonymous %}<span class="italic text-gray-400">Flow Encrypted</span>
+                            {% else %}<span class="font-bold text-gray-700">{{ c.student_email }}</span>{% endif %}
+                        </td>
+                        <td class="p-4">
+                            <form action="/update_status" method="POST" class="flex flex-col gap-2">
+                                <input type="hidden" name="id" value="{{ c.id }}">
+                                <textarea name="action_taken" class="neu-inset text-[10px] p-2 rounded-lg h-10 resize-none outline-none focus:text-blue-600" placeholder="Input resolution notes...">{{ c.action_taken if c.action_taken else '' }}</textarea>
+                                <div class="flex justify-between gap-1">
+                                    <select name="status" class="neu-flat text-[9px] rounded p-1 flex-1 font-bold text-gray-600">
+                                        <option value="Read" {{'selected' if c.status=='Read'}}>Acknowledge</option>
+                                        <option value="Screened" {{'selected' if c.status=='Screened'}}>Screened</option>
+                                        <option value="Resolved">Resolved</option>
+                                    </select>
+                                    <button type="submit" class="neu-flat px-2 py-1 text-blue-600 font-black text-[9px]">ROUTE</button>
+                                </div>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="w-full lg:w-80 shrink-0">
+        <div class="neu-inset bg-gray-900 rounded-[2.5rem] p-6 sticky top-24 h-[600px] flex flex-col shadow-2xl">
+            <h3 class="font-black text-[10px] text-blue-400 uppercase mb-4 tracking-tighter">System_Log://Concernflow</h3>
+            <div class="flex-1 overflow-y-auto space-y-4 custom-scrollbar">
+                {% for log in logs %}
+                <div class="border-l-2 {{ 'border-blue-500' if not log.concern_id else 'border-gray-800' }} pl-3">
+                    <p class="text-[8px] text-gray-500 font-mono">[{{ log.timestamp.strftime('%I:%M:%S %p') }}]</p>
+                    <p class="text-[10px] text-gray-300 font-mono">
+                        {% if log.concern_id %}
+                            <span class="text-blue-500">FLOW_{{ "%03d" % log.concern_id }}</span>
+                        {% else %}
+                            <span class="text-orange-400">SYSTEM_CORE</span>
+                        {% endif %}
+                        : {{ log.action }}
+                    </p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="descModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="neu-flat bg-white w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+        <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+            <div>
+                <p id="modalID" class="text-[10px] font-black text-blue-600 uppercase tracking-widest"></p>
+                <h3 id="modalSubject" class="text-xl font-black text-gray-800 tracking-tighter uppercase"></h3>
+            </div>
+            <button onclick="closeModal()" class="neu-flat p-2 rounded-full text-gray-400 hover:text-red-500">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="p-8">
+            <p class="text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Student Narrative</p>
+            <div id="modalDesc" class="text-sm text-gray-600 leading-relaxed font-medium whitespace-pre-line max-h-[300px] overflow-y-auto pr-4 custom-scrollbar-light">
+            </div>
+        </div>
+        <div class="p-6 bg-gray-50 text-center">
+            <button onclick="closeModal()" class="neu-flat px-8 py-3 rounded-2xl text-xs font-black text-gray-600 uppercase hover:neu-inset transition-all">Terminate View</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openModal(subject, desc, id) {
+        document.getElementById('modalSubject').innerText = subject;
+        document.getElementById('modalDesc').innerText = desc;
+        document.getElementById('modalID').innerText = '#FLOW-' + id.toString().padStart(4, '0');
+        document.getElementById('descModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+        document.getElementById('descModal').classList.add('hidden');
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeModal();
+    });
+</script>
+
+<style>
+    .custom-scrollbar::-webkit-scrollbar { width: 3px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #374151; border-radius: 10px; }
+    
+    .custom-scrollbar-light::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar-light::-webkit-scrollbar-track { background: #f3f4f6; }
+    .custom-scrollbar-light::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+
+    .animate-in { animation: modalShow 0.2s ease-out; }
+    @keyframes modalShow {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+    }
+</style>
+{% endblock %}
