@@ -7,10 +7,23 @@
     </div>
     
     <div class="flex flex-wrap items-center gap-2">
-        <a href="/admin" class="neu-flat px-3 py-2 rounded-xl text-[9px] font-black {{ 'text-blue-600 bg-white/50' if request.path == '/admin' else 'text-gray-400' }}">MASTER</a>
-        <a href="/academic" class="neu-flat px-3 py-2 rounded-xl text-[9px] font-black {{ 'text-blue-600 bg-white/50' if request.path == '/academic' else 'text-gray-400' }}">ACADEMIC</a>
-        <a href="/financial" class="neu-flat px-3 py-2 rounded-xl text-[9px] font-black {{ 'text-blue-600 bg-white/50' if request.path == '/financial' else 'text-gray-400' }}">FINANCIAL</a>
-        <a href="/welfare" class="neu-flat px-3 py-2 rounded-xl text-[9px] font-black {{ 'text-blue-600 bg-white/50' if request.path == '/welfare' else 'text-gray-400' }}">WELFARE</a>
+        {% if session.get('user_role') %}
+            {% if session.get('user_role') == 'Admin' %}
+                <a href="/admin" class="neu-flat px-3 py-2 rounded-xl text-[9px] font-black {{ 'text-blue-600 bg-white/50' if request.path == '/admin' else 'text-gray-400' }}">MASTER</a>
+            {% endif %}
+
+            {% if session.get('user_role') in ['Admin', 'Academic'] %}
+                <a href="/academic" class="neu-flat px-3 py-2 rounded-xl text-[9px] font-black {{ 'text-blue-600 bg-white/50' if request.path == '/academic' else 'text-gray-400' }}">ACADEMIC</a>
+            {% endif %}
+
+            {% if session.get('user_role') in ['Admin', 'Financial'] %}
+                <a href="/financial" class="neu-flat px-3 py-2 rounded-xl text-[9px] font-black {{ 'text-blue-600 bg-white/50' if request.path == '/financial' else 'text-gray-400' }}">FINANCIAL</a>
+            {% endif %}
+
+            {% if session.get('user_role') in ['Admin', 'Welfare'] %}
+                <a href="/welfare" class="neu-flat px-3 py-2 rounded-xl text-[9px] font-black {{ 'text-blue-600 bg-white/50' if request.path == '/welfare' else 'text-gray-400' }}">WELFARE</a>
+            {% endif %}
+        {% endif %}
         
         <div class="h-6 w-[1px] bg-gray-200 mx-2"></div> 
 
@@ -33,14 +46,21 @@
 
 <div class="flex flex-col lg:flex-row gap-8">
     <div class="flex-1 space-y-8">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="neu-flat p-6 rounded-[2rem] text-center">
                 <p class="text-[10px] font-black uppercase text-gray-400">Total Concernflow</p>
                 <p class="text-4xl font-black text-gray-800">{{ total }}</p>
             </div>
+            
             <div class="neu-flat p-6 rounded-[2rem] text-center border-t-4 {{ 'border-red-500' if esc_rate > 10 else 'border-green-500' }}">
                 <p class="text-[10px] font-black uppercase text-gray-400">Escalation Velocity</p>
                 <p class="text-4xl font-black {{ 'text-red-500' if esc_rate > 10 else 'text-green-500' }}">{{ esc_rate|round(1) }}%</p>
+            </div>
+
+            <div class="neu-flat p-6 rounded-[2rem] text-center border-t-4 border-blue-500">
+                <p class="text-[10px] font-black uppercase text-gray-400">System Latency (ART)</p>
+                <p class="text-4xl font-black text-blue-600">{{ avg_response_time if avg_response_time else '0' }}<span class="text-sm">m</span></p>
+                <p class="text-[8px] font-bold text-gray-400 mt-1">AVG. RESOLUTION MINUTES</p>
             </div>
         </div>
 
@@ -59,7 +79,14 @@
                     <tr class="border-b border-white/5 hover:bg-white/5 transition-all">
                         <td class="p-4">
                             <p class="font-black text-gray-800">#FLOW-{{ "%04d" % c.id }}</p>
-                            <span class="text-[9px] px-2 py-0.5 rounded bg-gray-100 text-gray-500 uppercase">{{ c.status }}</span>
+                            <span class="text-[9px] px-2 py-0.5 rounded uppercase font-bold
+                                {{ 'bg-blue-100 text-blue-600' if c.status == 'Submitted' }}
+                                {{ 'bg-purple-100 text-purple-600' if c.status == 'Routed' }}
+                                {{ 'bg-orange-100 text-orange-600' if c.status == 'Read' }}
+                                {{ 'bg-yellow-100 text-yellow-600' if c.status == 'Screened' }}
+                                {{ 'bg-green-100 text-green-600' if c.status == 'Resolved' }}">
+                                {{ c.status }}
+                            </span>
                             {% if c.is_escalated %}
                             <span class="text-[9px] px-2 py-0.5 rounded bg-red-100 text-red-600 font-bold uppercase ml-1">ESCALATED</span>
                             {% endif %}
@@ -73,7 +100,7 @@
                             </button>
                         </td>
                         <td class="p-4">
-                            {% if c.is_anonymous %}<span class="italic text-gray-400">Flow Encrypted</span>
+                            {% if c.is_anonymous %}<span class="italic text-gray-400 font-mono">FLOW_ENCRYPTED</span>
                             {% else %}<span class="font-bold text-gray-700">{{ c.student_email }}</span>{% endif %}
                         </td>
                         <td class="p-4">
@@ -81,12 +108,14 @@
                                 <input type="hidden" name="id" value="{{ c.id }}">
                                 <textarea name="action_taken" class="neu-inset text-[10px] p-2 rounded-lg h-10 resize-none outline-none focus:text-blue-600" placeholder="Input resolution notes...">{{ c.action_taken if c.action_taken else '' }}</textarea>
                                 <div class="flex justify-between gap-1">
-                                    <select name="status" class="neu-flat text-[9px] rounded p-1 flex-1 font-bold text-gray-600">
-                                        <option value="Read" {{'selected' if c.status=='Read'}}>Acknowledge</option>
-                                        <option value="Screened" {{'selected' if c.status=='Screened'}}>Screened</option>
-                                        <option value="Resolved">Resolved</option>
+                                    <select name="status" class="neu-flat text-[9px] rounded p-1 flex-1 font-bold text-gray-600 outline-none">
+                                        <option value="Submitted" {{'selected' if c.status=='Submitted'}}>1. Submitted</option>
+                                        <option value="Routed" {{'selected' if c.status=='Routed'}}>2. Routed</option>
+                                        <option value="Read" {{'selected' if c.status=='Read'}}>3. Read</option>
+                                        <option value="Screened" {{'selected' if c.status=='Screened'}}>4. Screened</option>
+                                        <option value="Resolved" {{'selected' if c.status=='Resolved'}}>5. Resolved</option>
                                     </select>
-                                    <button type="submit" class="neu-flat px-2 py-1 text-blue-600 font-black text-[9px]">ROUTE</button>
+                                    <button type="submit" class="neu-flat px-2 py-1 text-blue-600 font-black text-[9px] hover:bg-blue-50 transition-colors">UPDATE</button>
                                 </div>
                             </form>
                         </td>
@@ -98,11 +127,14 @@
     </div>
 
     <div class="w-full lg:w-80 shrink-0">
-        <div class="neu-inset bg-gray-900 rounded-[2.5rem] p-6 sticky top-24 h-[600px] flex flex-col shadow-2xl">
-            <h3 class="font-black text-[10px] text-blue-400 uppercase mb-4 tracking-tighter">System_Log://Concernflow</h3>
+        <div class="neu-inset bg-gray-900 rounded-[2.5rem] p-6 sticky top-24 h-[600px] flex flex-col shadow-2xl border border-white/5">
+            <h3 class="font-black text-[10px] text-blue-400 uppercase mb-4 tracking-tighter flex items-center gap-2">
+                <span class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+                System_Log://Concernflow
+            </h3>
             <div class="flex-1 overflow-y-auto space-y-4 custom-scrollbar">
                 {% for log in logs %}
-                <div class="border-l-2 {{ 'border-blue-500' if not log.concern_id else 'border-gray-800' }} pl-3">
+                <div class="border-l-2 {{ 'border-blue-500' if not log.concern_id else 'border-gray-800' }} pl-3 hover:bg-white/5 transition-colors py-1">
                     <p class="text-[8px] text-gray-500 font-mono">[{{ log.timestamp.strftime('%I:%M:%S %p') }}]</p>
                     <p class="text-[10px] text-gray-300 font-mono">
                         {% if log.concern_id %}
@@ -126,7 +158,7 @@
                 <p id="modalID" class="text-[10px] font-black text-blue-600 uppercase tracking-widest"></p>
                 <h3 id="modalSubject" class="text-xl font-black text-gray-800 tracking-tighter uppercase"></h3>
             </div>
-            <button onclick="closeModal()" class="neu-flat p-2 rounded-full text-gray-400 hover:text-red-500">
+            <button onclick="closeModal()" class="neu-flat p-2 rounded-full text-gray-400 hover:text-red-500 transition-colors">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
@@ -136,7 +168,7 @@
             </div>
         </div>
         <div class="p-6 bg-gray-50 text-center">
-            <button onclick="closeModal()" class="neu-flat px-8 py-3 rounded-2xl text-xs font-black text-gray-600 uppercase hover:neu-inset transition-all">Terminate View</button>
+            <button onclick="closeModal()" class="neu-flat px-8 py-3 rounded-2xl text-xs font-black text-gray-600 uppercase hover:neu-inset transition-all active:scale-95">Terminate View</button>
         </div>
     </div>
 </div>
@@ -147,29 +179,16 @@
         document.getElementById('modalDesc').innerText = desc;
         document.getElementById('modalID').innerText = '#FLOW-' + id.toString().padStart(4, '0');
         document.getElementById('descModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
     }
 
     function closeModal() {
         document.getElementById('descModal').classList.add('hidden');
+        document.body.style.overflow = 'auto';
     }
 
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') closeModal();
     });
 </script>
-
-<style>
-    .custom-scrollbar::-webkit-scrollbar { width: 3px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #374151; border-radius: 10px; }
-    
-    .custom-scrollbar-light::-webkit-scrollbar { width: 4px; }
-    .custom-scrollbar-light::-webkit-scrollbar-track { background: #f3f4f6; }
-    .custom-scrollbar-light::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
-
-    .animate-in { animation: modalShow 0.2s ease-out; }
-    @keyframes modalShow {
-        from { opacity: 0; transform: scale(0.95); }
-        to { opacity: 1; transform: scale(1); }
-    }
-</style>
 {% endblock %}
