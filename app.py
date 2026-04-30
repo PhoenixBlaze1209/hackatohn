@@ -125,6 +125,7 @@ def send_email(to_email, subject, concern_id, status, category, department, acti
             server.send_message(msg)
     except Exception as e:
         print(f"Email Error: {e}")
+
 # --- DATABASE LOGIC ---
 def get_db_connection():
     # Gagamit na tayo ng psycopg2 para sa Supabase/PostgreSQL
@@ -145,8 +146,8 @@ def check_slas():
     now = datetime.now()
     try:
         with conn.cursor() as cursor:
-            cursor.execute("UPDATE concerns SET is_escalated = TRUE WHERE status IN ('Submitted', 'Routed') AND created_at < %s", (now - timedelta(days=2)))
-            cursor.execute("UPDATE concerns SET is_escalated = TRUE WHERE status = 'Read' AND last_updated < %s", (now - timedelta(days=5)))
+            cursor.execute("UPDATE concerns SET is_escalated = TRUE WHERE status IN ('Submitted', 'Routed') AND created_at < %s", (now - timedelta(days=2),))
+            cursor.execute("UPDATE concerns SET is_escalated = TRUE WHERE status = 'Read' AND last_updated < %s", (now - timedelta(days=5),))
         conn.commit()
     finally:
         conn.close()
@@ -277,6 +278,7 @@ def submit_concern():
         category, dept, status, sentiment_score, is_escalated, action_taken = "Academic", "Academic Affairs", "Routed", 1, 0, "Processing..."
 
     # --- DATABASE INSERTION ---
+    # FIX: Use RETURNING id instead of cursor.lastrowid (PostgreSQL syntax)
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
@@ -284,8 +286,9 @@ def submit_concern():
                 INSERT INTO concerns 
                 (student_email, category, department, subject, description, is_anonymous, status, sentiment_score, action_taken) 
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
             """, (email, category, dept, subject, description, anonymous, status, sentiment_score, action_taken))
-            new_id = cursor.lastrowid
+            new_id = cursor.fetchone()['id']
         conn.commit()
     finally:
         conn.close()
@@ -308,6 +311,7 @@ def submit_concern():
     log_event(new_id, f"AI {status} to {dept}")
     flash(flash_msg)
     return redirect(url_for('index'))
+
 # --- DATA FETCHING HELPER ---
 def fetch_dashboard_data(category=None):
     check_slas()
@@ -321,8 +325,13 @@ def fetch_dashboard_data(category=None):
                 cursor.execute("SELECT * FROM concerns ORDER BY created_at DESC")
                 concerns = cursor.fetchall()
             
-            cursor.execute("SELECT COUNT(*) as total, SUM(is_escalated) as escalated FROM concerns" + (" WHERE category = %s" if category else ""), (category,) if category else ())
+            # FIX: Separated queries to avoid broken conditional string concatenation
+            if category:
+                cursor.execute("SELECT COUNT(*) as total, SUM(CASE WHEN is_escalated THEN 1 ELSE 0 END) as escalated FROM concerns WHERE category = %s", (category,))
+            else:
+                cursor.execute("SELECT COUNT(*) as total, SUM(CASE WHEN is_escalated THEN 1 ELSE 0 END) as escalated FROM concerns")
             stats = cursor.fetchone()
+
             cursor.execute("SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT 15")
             logs = cursor.fetchall()
     finally:
@@ -341,23 +350,13 @@ def admin_dashboard():
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
-            # Gumamit ng Alias (AS) para sigurado tayo sa Key Name kung Dictionary ang gamit
+            # FIX: Use PostgreSQL syntax instead of TIMESTAMPDIFF (MySQL only)
             cursor.execute("""
-                SELECT AVG(TIMESTAMPDIFF(MINUTE, created_at, last_updated)) AS average_time
+                SELECT AVG(EXTRACT(EPOCH FROM (last_updated - created_at)) / 60) AS average_time
                 FROM concerns WHERE status = 'Resolved'
             """)
             result = cursor.fetchone()
-            
-            # SAFE FETCHING LOGIC:
-            if result:
-                # I-check kung Dictionary o Tuple ang result
-                if isinstance(result, dict):
-                    avg_time = result.get('average_time')
-                else:
-                    avg_time = result[0]
-            else:
-                avg_time = 0
-                
+            avg_time = result['average_time'] if result else None
     finally:
         conn.close()
 
@@ -397,9 +396,9 @@ def get_average_response_time():
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
-            # Kinukuha ang average response time per department
+            # FIX: Use PostgreSQL syntax instead of TIMESTAMPDIFF (MySQL only)
             query = """
-                SELECT department, AVG(TIMESTAMPDIFF(MINUTE, created_at, last_updated)) as avg_time 
+                SELECT department, AVG(EXTRACT(EPOCH FROM (last_updated - created_at)) / 60) as avg_time 
                 FROM concerns 
                 WHERE status = 'Resolved' 
                 GROUP BY department
@@ -435,6 +434,7 @@ def login_as(role):
     session.clear()
     flash("INVALID ACCESS VECTOR DETECTED")
     return redirect(url_for('index'))
+
 @app.route('/logout')
 def logout():
     session.clear()
@@ -547,6 +547,7 @@ def export_data():
         return "System error during data extraction", 500
     finally:
         conn.close()
+
 # --- PDF EXPORT ---
 @app.route('/export_pdf')
 @login_required()
@@ -597,10 +598,9 @@ def export_pdf():
             ])
     
     # 6. Table Styling
-    # Adjusting colWidths to fit landscape(letter) - Total width ~732 points
-    table = Table(data, colWidths=[60, 70, 60, 130, 80, 70, 40, 180])
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3a8a')), # Dark blue theme
+    # FIX: Replaced invalid ROWBACKGROUNDS with alternating BACKGROUND commands per row
+    table_style_commands = [
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3a8a')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
@@ -610,8 +610,15 @@ def export_pdf():
         ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
         ('FONTSIZE', (0, 1), (-1, -1), 8),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.white]) # Zebra striping
-    ]))
+    ]
+
+    # Add zebra striping manually for each odd row
+    for i in range(1, len(data)):
+        if i % 2 == 0:
+            table_style_commands.append(('BACKGROUND', (0, i), (-1, i), colors.whitesmoke))
+
+    table = Table(data, colWidths=[60, 70, 60, 130, 80, 70, 40, 180])
+    table.setStyle(TableStyle(table_style_commands))
     
     elements.append(table)
     
