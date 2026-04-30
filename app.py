@@ -38,7 +38,7 @@ SMTP_CONFIG = {
 }
 
 # --- AI CONFIGURATION (New SDK for Gemini 3) ---
-GEMINI_API_KEY = "AIzaSyDMavXMAx8TDogz6jTEh6S8cEwQ9u287hc"
+GEMINI_API_KEY = "AIzaSyDwxZcJhvdI-iIr8AtBH1UqEGwD2uRSxJk"
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 AI_SYSTEM_INSTRUCTIONS = """
