@@ -121,14 +121,14 @@ def send_email(to_email, subject, concern_id, status, category, department, acti
         print(f"Email Error: {e}")
 
 # --- DATABASE LOGIC ---
+# Sa app.py, i-update ang function na ito:
 def get_db_connection():
-    if not DATABASE_URL:
-        raise Exception("DATABASE_URL is missing in environment variables")
-    return psycopg2.connect(
-        DATABASE_URL,
-        cursor_factory=RealDictCursor,
-        sslmode='require'  # 🔥 REQUIRED FOR RENDER + SUPABASE
-    )
+    db_url = os.getenv('DATABASE_URL')
+    # Ang linyang ito ay tinitiyak na ang URL ay laging may sslmode
+    if db_url and 'sslmode' not in db_url:
+        db_url += '?sslmode=require'
+    
+    return psycopg2.connect(db_url, cursor_factory=RealDictCursor)
 
 def log_event(concern_id, action):
     conn = get_db_connection()
