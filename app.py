@@ -184,7 +184,7 @@ def chat_with_ai():
                 # --- 3. FALLBACK ATTEMPT (Gemini 2.0 Flash) ---
                 # 2.0 is often more stable during 2.5/3.0 demand spikes
                 response = client.models.generate_content(
-                    model="gemini-2.0-flash",
+                    model="gemini-2.5-flash",
                     contents=user_message,
                     config={'system_instruction': AI_SYSTEM_INSTRUCTIONS}
                 )
@@ -249,7 +249,7 @@ def submit_concern():
 
     try:
         response = client.models.generate_content(
-            model="gemini-1.5-flash", # Use 1.5-flash for stability
+            model="gemini-2.5-flash", # Use 1.5-flash for stability
             contents=routing_prompt
         )
         
