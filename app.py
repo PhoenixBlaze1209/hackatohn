@@ -351,8 +351,8 @@ def admin_dashboard():
         with conn.cursor() as cursor:
             # FIX: Use PostgreSQL syntax instead of TIMESTAMPDIFF (MySQL only)
             cursor.execute("""
-                SELECT AVG(EXTRACT(EPOCH FROM (last_updated - created_at)) / 60) AS average_time
-                FROM concerns WHERE status = 'Resolved'
+            SELECT AVG(EXTRACT(EPOCH FROM (COALESCE(last_updated, NOW()) - created_at)) / 60) AS average_time
+            FROM concerns WHERE status = 'Resolved'
             """)
             result = cursor.fetchone()
             avg_time = result['average_time'] if result else None
