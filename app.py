@@ -10,7 +10,9 @@ from datetime import datetime, timedelta
 from io import StringIO, BytesIO
 from flask import Flask, request, render_template, redirect, url_for, flash, session, jsonify, make_response
 from functools import wraps
-
+from dotenv import load_dotenv
+import psycopg2
+from psycopg2.extras import RealDictCursor
 # ReportLab Imports for PDF
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, landscape
@@ -20,27 +22,22 @@ from reportlab.lib.styles import getSampleStyleSheet
 app = Flask(__name__)
 app.secret_key = "super_secret_spaghetti_key"
 
-# --- CONFIGURATION ---
-DB_CONFIG = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': '', 
-    'db': 'student_concerns',
-    'port': 3307,
-    'cursorclass': pymysql.cursors.DictCursor
-}
+load_dotenv()
 
+# --- CONFIGURATION (Environment Variables) ---
+DATABASE_URL = os.getenv('DATABASE_URL')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+
+# Eto yung required mong SMTP_CONFIG
 SMTP_CONFIG = {
     'server': 'smtp.gmail.com',
     'port': 587,
     'user': 'samsongenesis5@gmail.com',
-    'password': 'jzdy musd iqzw fmjm'
+    'password': os.getenv('SMTP_PASSWORD') # Kukunin nito yung 'jzdy...' sa Render
 }
 
-# --- AI CONFIGURATION (New SDK for Gemini 3) ---
-GEMINI_API_KEY = "AIzaSyDwxZcJhvdI-iIr8AtBH1UqEGwD2uRSxJk"
+# --- AI CONFIGURATION ---
 client = genai.Client(api_key=GEMINI_API_KEY)
-
 AI_SYSTEM_INSTRUCTIONS = """
 CORE IDENTITY:
 You are the "System Concernflow Core." Your purpose is to process and direct the fluid movement of student issues through school policy channels.
@@ -130,7 +127,8 @@ def send_email(to_email, subject, concern_id, status, category, department, acti
         print(f"Email Error: {e}")
 # --- DATABASE LOGIC ---
 def get_db_connection():
-    return pymysql.connect(**DB_CONFIG)
+    # Gagamit na tayo ng psycopg2 para sa Supabase/PostgreSQL
+    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
 
 def log_event(concern_id, action):
     conn = get_db_connection()
