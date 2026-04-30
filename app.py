@@ -74,18 +74,12 @@ def login_required(role=None):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            # Check if user is logged in at all
             if 'user_role' not in session:
-                # Point to the PORTAL, not the specific login_as route
-                return redirect(url_for('login_portal')) 
-            
-            # Check for specific role permission
-            # We allow 'Admin' to bypass specific role checks (Superuser logic)
+                return redirect(url_for('login_portal'))
             user_current_role = session.get('user_role')
             if role and user_current_role != role and user_current_role != 'Admin':
                 flash("INSUFFICIENT PERMISSIONS FOR THIS VECTOR")
                 return redirect(url_for('login_portal'))
-                
             return f(*args, **kwargs)
         return decorated_function
     return decorator
@@ -128,8 +122,13 @@ def send_email(to_email, subject, concern_id, status, category, department, acti
 
 # --- DATABASE LOGIC ---
 def get_db_connection():
-    # Gagamit na tayo ng psycopg2 para sa Supabase/PostgreSQL
-    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+    if not DATABASE_URL:
+        raise Exception("DATABASE_URL is missing in environment variables")
+    return psycopg2.connect(
+        DATABASE_URL,
+        cursor_factory=RealDictCursor,
+        sslmode='require'  # 🔥 REQUIRED FOR RENDER + SUPABASE
+    )
 
 def log_event(concern_id, action):
     conn = get_db_connection()
