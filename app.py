@@ -249,7 +249,7 @@ def submit_concern():
 
     try:
         response = client.models.generate_content(
-            model="gemini-1.5-flash", # Use 1.5-flash for stability
+            model="gemini-2.0-flash", # Use 1.5-flash for stability
             contents=routing_prompt
         )
         
