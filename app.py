@@ -256,10 +256,11 @@ def submit_concern():
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
+            # Sa loob ng cursor.execute:
             cursor.execute("""
                 INSERT INTO concerns 
                 (student_email, category, department, subject, description, is_anonymous, status, sentiment_score, action_taken) 
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s::boolean, %s, %s, %s) -- Nilagyan ng ::boolean ang ika-6 na %s
                 RETURNING id
             """, (email, category, dept, subject, description, anonymous, status, sentiment_score, action_taken))
             new_id = cursor.fetchone()['id']
